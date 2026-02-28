@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ p.title }} | SmartRent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="max-w-4xl mx-auto p-6">
+        <div class="flex justify-between items-center mb-6">
+            <button onclick="history.back()" class="text-indigo-600 font-bold hover:bg-indigo-50 px-3 py-1 rounded">← Back</button>
+            <a href="/logout" class="text-red-500 font-medium hover:underline">Logout</a>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+            <img src="{{ p.image_url }}" class="w-full h-[400px] object-cover" alt="Property Image">
+            <div class="p-8">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h1 class="text-4xl font-extrabold text-gray-900">{{ p.title }}</h1>
+                        <p class="text-gray-500 text-lg mt-1">📍 {{ p.location }}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-3xl font-bold text-indigo-600">${{ p.price }}</p>
+                        <p class="text-gray-400 text-sm font-medium uppercase tracking-tighter">per month</p>
+                    </div>
+                </div>
+
+                <div class="mt-8">
+                    <h3 class="text-xl font-bold text-gray-800 border-b pb-2">Description</h3>
+                    <p class="text-gray-600 mt-4 leading-relaxed text-lg">{{ p.description }}</p>
+                </div>
+
+                    <div class="mt-6">
+                        <h3 class="text-lg font-bold">Amenities</h3>
+                        <div class="flex gap-4 mt-3">
+                            {% if p.amenities %}
+                                {% for a in p.amenities.split(',') if a %}
+                                    {% if a == 'WiFi' %}<div title="High-speed WiFi">📶</div>{% elif a=='AC' %}<div title="AC">❄️</div>{% elif a=='Food' %}<div title="Food">🍽️</div>{% elif a=='Cleaning' %}<div title="Cleaning">🧹</div>{% else %}<div>{{ a }}</div>{% endif %}
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-gray-400">No amenities listed.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <h3 class="text-lg font-bold">Security Score</h3>
+                        <div style="width:120px; height:120px; position:relative;">
+                            <svg viewBox="0 0 36 36" style="width:120px;height:120px;">
+                                <path d="M18 2.0845a15.9155 15.9155 0 1 1 0 31.831" fill="none" stroke="#eee" stroke-width="3.8"></path>
+                                {% set score = 0 %}
+                                {% if p.cctv %}{% set score = score + 40 %}{% endif %}
+                                {% if p.gated %}{% set score = score + 40 %}{% endif %}
+                                {% if p.last_audit %}
+                                    {% set score = score + 20 %}
+                                {% endif %}
+                                <path d="M18 2.0845a15.9155 15.9155 0 1 1 0 31.831" fill="none" stroke="#4ade80" stroke-width="3.8" stroke-dasharray="{{ score }},100"></path>
+                            </svg>
+                            <div style="position:absolute; left:0; right:0; top:0; bottom:0; display:flex; align-items:center; justify-content:center; font-weight:800;">{{ score }}%</div>
+                        </div>
+                    </div>
+
+                <div class="mt-10 flex items-center justify-between p-6 bg-indigo-50/50 rounded-2xl border border-indigo-100">
+                    <div>
+                        <p class="text-xs text-indigo-400 uppercase font-bold tracking-widest mb-1">Listed By</p>
+                        <p class="text-2xl font-bold text-gray-800">{{ p.owner_name }}</p>
+                    </div>
+                  <div class="flex gap-3">
+                    <a href="/chat?target_id={{ p.owner_id }}" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-bold transition">Chat Now</a>
+                    {% if session.get('user_id') != p.owner_id %}
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <button id="requestBtn" data-prop-id="{{ p.id }}" data-owner-id="{{ p.owner_id }}" data-title="{{ p.title }}" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-bold">Request</button>
+                        <div id="requestStatus" style="font-size:0.95rem; color:#64748b">&nbsp;</div>
+                    </div>
+                    {% endif %}
+                  </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.getElementById('requestBtn')?.addEventListener('click', async function(){
+            const pid = this.getAttribute('data-prop-id');
+            const ownerId = this.getAttribute('data-owner-id');
+            const title = this.getAttribute('data-title');
+            if(!confirm('Send rental request to owner for this property?')) return;
+            const res = await fetch('/api/request_rent', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({property_id: pid})});
+            const j = await res.json();
+            if(!res.ok || j.status !== 'requested') return alert('Unable to send request');
+            // send a chat message to owner notifying them (include rental_request_id)
+            const rrid = j.rental_request_id;
+            const msg = rrid + '|' + title;
+            await fetch('/api/send_msg', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({receiver_id: ownerId, message: msg, msg_type: 'request'})});
+            alert('Request sent to owner');
+            // optional: redirect to chat
+            window.location.href = '/chat?target_id=' + ownerId;
+        });
+
+        // show request status for current tenant (if any)
+        async function updateRequestStatus(){
+            try{
+                const res = await fetch('/api/get_rental_requests');
+                if(!res.ok) return;
+                const data = await res.json();
+                const pid = '{{ p.id }}';
+                const my = (data || []).find(r => String(r.property_id) === String(pid));
+                const el = document.getElementById('requestStatus');
+                if(!el) return;
+                if(!my) { el.innerText = ''; return; }
+                if(my.status === 'requested') el.innerText = 'Request pending with owner';
+                else if(my.status === 'accepted') el.innerText = 'Request accepted — please pay from Payments';
+                else if(my.status === 'paid') el.innerText = 'Rent paid — confirmed';
+                else if(my.status === 'rejected') el.innerText = 'Request rejected by owner';
+            }catch(e){ }
+        }
+        window.addEventListener('load', ()=>{ updateRequestStatus(); });
+    </script>
+</body>
+</html>

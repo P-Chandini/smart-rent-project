@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Owner Dashboard | SmartRent</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAWcRedcm49vsWPTkDdKy3zDTZ53jDsPHQ&libraries=places"></script>
+    <style>
+        :root { --primary: #6366f1; --accent: #a855f7; --bg: #f8fafc; --white: #ffffff; }
+        body { margin: 0; font-family: 'Plus Jakarta Sans'; background: var(--bg); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        /* Layout Components */
+        nav { background: var(--white); padding: 15px 5%; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.03); z-index: 100; }
+        .main-container { display: flex; flex: 1; overflow: hidden; }
+        .sidebar { width: 450px; background: var(--white); padding: 25px; overflow-y: auto; border-right: 1px solid #e2e8f0; }
+        #map { flex: 1; background: #cbd5e1; }
+
+        /* Stats Section */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+        .stat-card { background: linear-gradient(135deg, var(--primary), var(--accent)); padding: 20px; border-radius: 16px; color: white; }
+        .stat-card h3 { margin: 0; font-size: 0.8rem; opacity: 0.8; }
+        .stat-card p { margin: 5px 0 0; font-size: 1.5rem; font-weight: 800; }
+
+        /* Form Styling */
+        .section-header { font-weight: 800; font-size: 1.2rem; margin: 25px 0 15px; display: flex; align-items: center; gap: 10px; color: #1e293b; }
+        .input-box { width: 100%; padding: 12px; border: 2px solid #f1f5f9; border-radius: 12px; font-family: inherit; box-sizing: border-box; margin-bottom: 12px; transition: 0.3s; }
+        .input-box:focus { border-color: var(--primary); outline: none; }
+        
+        /* Property Management Cards */
+        .prop-manage-card { display: flex; align-items: center; gap: 15px; padding: 12px; background: #f1f5f9; border-radius: 12px; margin-bottom: 10px; }
+        .prop-manage-card img { width: 50px; height: 50px; border-radius: 8px; object-fit: cover; }
+        .prop-info { flex: 1; }
+        .prop-info h4 { margin: 0; font-size: 0.9rem; }
+        .delete-btn { color: #ef4444; cursor: pointer; border: none; background: none; font-size: 1.1rem; }
+
+        .amenities-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #f8fafc; padding: 12px; border-radius: 12px; border: 1px solid #f1f5f9; margin-bottom: 15px; }
+        .amenity { font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        
+        .btn-action { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.3s; }
+        .btn-action:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(99, 102, 241, 0.2); }
+    </style>
+</head>
+<body>
+    <nav>
+        <div style="font-weight: 800; font-size: 1.5rem; color: var(--primary);">SmartRent Pro</div>
+        <a href="/logout" style="text-decoration: none; color: #ef4444; font-weight: 700;"><i class="fa-solid fa-power-off"></i> Logout</a>
+    </nav>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Properties</h3>
+                    <p>{{ properties|length }}</p>
+                </div>
+                <div class="stat-card" style="background: #10b981;">
+                    <h3>Active Bookings</h3>
+                    <p>{{ bookings|length }}</p>
+                </div>
+            </div>
+
+            <div class="section-header"><i class="fa-solid fa-house-chimney"></i> Your Listings</div>
+            <div style="max-height: 200px; overflow-y: auto; margin-bottom: 20px;">
+                {% for p in properties %}
+                <div class="prop-manage-card">
+                    <img src="{{ url_for('static', filename='uploads/' + (p.image_url if p.image_url else '') ) }}" onerror="this.style.display='none'">
+                    <div class="prop-info">
+                        <h4>{{ p.title }}</h4>
+                        <span style="font-size: 0.7rem; font-weight: 700; color: var(--primary);">₹{{ p.price }} / mo</span>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end">
+                        <label style="font-size:0.75rem; font-weight:700;">Status</label>
+                        <input type="checkbox" data-id="{{ p.id }}" class="statusToggle" {{ 'checked' if p.status=='active' else '' }}>
+                        <div style="display:flex; gap:6px; margin-top:6px;">
+                            <button class="btn-edit-price" data-id="{{ p.id }}">Edit Price</button>
+                            <button class="btn-edit-desc" data-id="{{ p.id }}">Edit</button>
+                            <button class="delete-btn" data-id="{{ p.id }}"> <i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <p style="font-size: 0.8rem; color: #94a3b8;">No properties listed yet.</p>
+                {% endfor %}
+            </div>
+
+            <div class="section-header"><i class="fa-solid fa-plus-circle"></i> Add New Listing</div>
+            <form action="/add_property" method="POST" enctype="multipart/form-data">
+                <label style="font-size: 0.7rem; font-weight: 800; color: #94a3b8;">PROPERTY DETAILS</label>
+                <input type="text" name="title" class="input-box" placeholder="Title (e.g. Modern PG)" required>
+                
+                <div style="display: flex; gap: 10px;">
+                    <input type="number" name="price" class="input-box" placeholder="Price (₹)" required>
+                    <select name="category" class="input-box">
+                        <option value="PG">PG</option>
+                        <option value="Hostel">Hostel</option>
+                        <option value="Home">Home</option>
+                    </select>
+                </div>
+
+                <label style="font-size: 0.7rem; font-weight: 800; color: #94a3b8;">MAP LOCATION</label>
+                <input id="searchBox" type="text" name="address" class="input-box" placeholder="Search address or landmark..." required>
+                <input type="hidden" id="lat" name="lat">
+                <input type="hidden" id="lng" name="lng">
+
+                <label style="font-size: 0.7rem; font-weight: 800; color: #94a3b8;">AMENITIES</label>
+                <div class="amenities-grid">
+                    <label class="amenity"><input type="checkbox" name="amenities" value="WiFi"> WiFi</label>
+                    <label class="amenity"><input type="checkbox" name="amenities" value="AC"> AC</label>
+                    <label class="amenity"><input type="checkbox" name="amenities" value="Food"> Food</label>
+                    <label class="amenity"><input type="checkbox" name="amenities" value="Cleaning"> Cleaning</label>
+                </div>
+
+                <label style="font-size: 0.7rem; font-weight: 800; color: #94a3b8;">UPLOAD IMAGE (NO PDF)</label>
+                <input type="file" name="property_image" class="input-box" accept="image/*" required>
+
+                <button type="submit" class="btn-action">Publish Property</button>
+            </form>
+
+            <div class="section-header"><i class="fa-solid fa-envelope-open-text"></i> Pending Requests</div>
+            {% for b in bookings %}
+            <div class="prop-manage-card" style="background: #fff; border: 2px solid #f1f5f9;">
+                <div class="prop-info">
+                    <h4 style="color: var(--primary);">{{ b.t_name }}</h4>
+                    <p style="margin:0; font-size: 0.75rem;">Request for: <b>{{ b.p_title }}</b></p>
+                </div>
+                <a href="/chat/{{ b.tenant_id }}" style="text-decoration: none; padding: 8px 15px; background: #e0e7ff; color: #4338ca; border-radius: 8px; font-weight: 800; font-size: 0.7rem;">CHAT</a>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div id="map"></div>
+    </div>
+
+    <script>
+        function initMap() {
+            var vskp = {lat: 17.6868, lng: 83.2185};
+            var map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 13, center: vskp,
+                styles: [{ "featureType": "poi", "stylers": [{ "visibility": "off" }] }]
+            });
+
+            var marker = new google.maps.Marker({
+                map: map, position: vskp, draggable: true, animation: google.maps.Animation.DROP
+            });
+
+            marker.addListener('dragend', function(event) {
+                document.getElementById('lat').value = event.latLng.lat();
+                document.getElementById('lng').value = event.latLng.lng();
+            });
+
+            var searchBox = new google.maps.places.SearchBox(document.getElementById('searchBox'));
+            searchBox.addListener('places_changed', function() {
+                var places = searchBox.getPlaces();
+                if (places.length == 0) return;
+                var place = places[0];
+                map.setCenter(place.geometry.location);
+                marker.setPosition(place.geometry.location);
+                document.getElementById('lat').value = place.geometry.location.lat();
+                document.getElementById('lng').value = place.geometry.location.lng();
+            });
+        }
+        window.onload = initMap;
+        // status toggle handler
+        document.addEventListener('click', async (e)=>{
+            if(e.target.classList.contains('statusToggle')){
+                const id = e.target.getAttribute('data-id');
+                const res = await fetch('/api/toggle_property_status', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({property_id:id})});
+                const j = await res.json(); if(j.new) e.target.checked = (j.new=='active');
+            }
+            if(e.target.classList.contains('btn-edit-price')){
+                const id = e.target.getAttribute('data-id');
+                const val = prompt('New price (₹)'); if(!val) return; await fetch('/api/update_property', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({property_id:id, field:'price', value:val})}); location.reload();
+            }
+            if(e.target.classList.contains('btn-edit-desc')){
+                const id = e.target.getAttribute('data-id');
+                const val = prompt('Update description'); if(val===null) return; await fetch('/api/update_property', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({property_id:id, field:'description', value:val})}); location.reload();
+            }
+            if(e.target.closest('.delete-btn')){
+                const btn = e.target.closest('.delete-btn');
+                const id = btn.getAttribute('data-id'); if(!id) return; if(!confirm('Delete this property?')) return; await fetch('/api/delete_property', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({property_id:id})}); location.reload();
+            }
+        });
+    </script>
+</body>
+</html>

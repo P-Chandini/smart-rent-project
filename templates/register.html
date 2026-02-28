@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartRent | Join Now</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-purple: #9333ea; /* Matching your login button */
+            --bg-light: #f9fafb;
+            --text-main: #111827;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: linear-gradient(135deg, #f3f4f6 0%, #ffffff 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* --- BACK TO HOME LINK --- */
+        .back-home {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #6b7280;
+            text-decoration: none;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* --- THE CARD (Matches your login screenshot) --- */
+        .register-card {
+            background: white;
+            padding: 40px;
+            border-radius: 32px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.04);
+            width: 100%;
+            max-width: 480px;
+            text-align: center;
+            border: 1px solid #f3f4f6;
+        }
+
+        .icon-circle {
+            width: 60px;
+            height: 60px;
+            background: var(--primary-purple);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            color: white;
+            font-size: 1.5rem;
+            box-shadow: 0 10px 20px rgba(147, 51, 234, 0.2);
+        }
+
+        h2 { font-weight: 800; color: var(--text-main); margin-bottom: 8px; font-size: 1.8rem; }
+        p.subtitle { color: #6b7280; margin-bottom: 30px; font-size: 0.95rem; }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: left; }
+        .full { grid-column: span 2; }
+
+        label { display: block; font-weight: 600; font-size: 0.85rem; color: #374151; margin-bottom: 8px; }
+
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            background: #f9fafb;
+            border: 1.5px solid #f3f4f6;
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            box-sizing: border-box;
+            transition: 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary-purple);
+            background: white;
+        }
+
+        .btn-join {
+            width: 100%;
+            background: var(--primary-purple);
+            color: white;
+            padding: 16px;
+            border: none;
+            border-radius: 16px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 25px;
+        }
+
+        .btn-join:hover {
+            filter: brightness(1.1);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(147, 51, 234, 0.3);
+        }
+
+        .footer { margin-top: 25px; font-size: 0.9rem; color: #6b7280; }
+        .footer a { color: var(--primary-purple); text-decoration: none; font-weight: 700; }
+
+    </style>
+</head>
+<body>
+
+    <a href="/" class="back-home"><i class="fa-solid fa-arrow-left"></i> Back to Home</a>
+
+    <div class="register-card">
+        <div class="icon-circle">
+            <i class="fa-solid fa-bolt"></i>
+        </div>
+
+        <h2>Create Account</h2>
+        <p class="subtitle">Join thousands of happy residents today.</p>
+
+        <form action="/register" method="POST" class="form-grid">
+            <div class="full">
+                <label>Full Name</label>
+                <input type="text" name="name" placeholder="Enter your name" required>
+            </div>
+
+            <div class="full">
+                <label>Email Address</label>
+                <input type="email" name="email" placeholder="name@example.com" required>
+            </div>
+
+            <div class="full">
+                <label>Mobile Number</label>
+                <input type="tel" name="mobile" placeholder="Phone number">
+            </div>
+
+            <div class="full">
+                <label>Current City</label>
+                <input type="text" name="address" placeholder="e.g. Visakhapatnam">
+            </div>
+
+            <div>
+                <label>Password</label>
+                <input type="password" name="password" placeholder="••••••••" required>
+            </div>
+
+            <div>
+                <label>Confirm</label>
+                <input type="password" name="confirm_password" placeholder="••••••••" required>
+            </div>
+
+            <button type="submit" class="btn-join full">Sign Up Now</button>
+        </form>
+
+        <div class="footer">
+            Already have an account? <a href="/login_page">Login here</a>
+        </div>
+    </div>
+
+</body>
+</html>

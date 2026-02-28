@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartRent | The Ultimate Housing Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            --accent-glow: rgba(168, 85, 247, 0.4);
+            --card-bg: rgba(255, 255, 255, 0.8);
+            --text-dark: #1e293b;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #f8fafc;
+            color: var(--text-dark);
+            scroll-behavior: smooth;
+        }
+
+        /* --- NAVIGATION --- */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 20px 8%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            box-sizing: border-box;
+        }
+
+        .logo { font-size: 1.5rem; font-weight: 800; color: white; text-decoration: none; display: flex; align-items: center; gap: 10px; }
+        .logo i { background: white; -webkit-background-clip: text; -webkit-text-fill-color: transparent; background: white; border-radius: 8px; padding: 5px; }
+
+        .nav-btns .btn-login { color: white; text-decoration: none; font-weight: 600; margin-right: 20px; }
+        .nav-btns .btn-register { background: white; color: #6366f1; padding: 10px 25px; border-radius: 50px; text-decoration: none; font-weight: 700; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+
+        /* --- HERO SECTION --- */
+        .hero {
+            background: var(--primary-gradient);
+            height: 85vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: white;
+            padding: 0 20px;
+            clip-path: polygon(0 0, 100% 0, 100% 90%, 0% 100%);
+        }
+
+        .hero h1 { font-size: 4rem; margin: 0; letter-spacing: -1px; line-height: 1.1; }
+        .hero p { font-size: 1.25rem; opacity: 0.9; max-width: 600px; margin: 25px 0 40px; }
+
+        /* --- CATEGORY SECTION --- */
+        .section-padding { padding: 80px 8%; text-align: center; }
+        .section-title { font-size: 2.5rem; font-weight: 800; margin-bottom: 10px; }
+        .section-subtitle { color: #64748b; margin-bottom: 50px; }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 25px;
+        }
+
+        .cat-card {
+            background: white;
+            padding: 40px 20px;
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+            border: 1px solid #f1f5f9;
+        }
+
+        .cat-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(99, 102, 241, 0.15);
+            border-color: #6366f1;
+        }
+
+        .cat-card i {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* --- TOOLS & SERVICES --- */
+        .tools-section { background: #1e293b; color: white; padding: 100px 8%; border-radius: 50px; margin: 0 20px; }
+        
+        .tool-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(5px);
+            padding: 30px;
+            border-radius: 20px;
+            text-align: left;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .tool-card i { font-size: 2rem; color: #a855f7; margin-bottom: 15px; }
+        .tool-card h4 { margin: 10px 0; font-size: 1.2rem; }
+        .tool-card p { font-size: 0.9rem; opacity: 0.7; line-height: 1.6; }
+
+        footer { padding: 50px; text-align: center; color: #94a3b8; font-size: 0.9rem; }
+
+    </style>
+</head>
+<body>
+
+    <nav>
+        <a href="/" class="logo"><i class="fa-solid fa-bolt"></i> SmartRent</a>
+        <div class="nav-btns">
+            <a href="/login_page" class="btn-login">Login</a>
+            <a href="/register_page" class="btn-register">Join Now</a>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <h1>Your Entire Home, <br>On One Screen.</h1>
+        <p>The 2026 standard for finding PGs, Hostels, and Homes with integrated service booking and instant payments.</p>
+        <div>
+            <a href="/register_page" class="btn-register" style="padding: 18px 50px; font-size: 1.1rem;">Get Started Now</a>
+        </div>
+    </section>
+
+    <section class="section-padding" id="categories">
+        <h2 class="section-title">Explore by Category</h2>
+        <p class="section-subtitle">Tailored living spaces for every need.</p>
+        
+        <div class="grid-container">
+            <div class="cat-card">
+                <i class="fa-solid fa-bed"></i>
+                <h3>Premium PGs</h3>
+                <p>Curated co-living for students and pros.</p>
+            </div>
+            <div class="cat-card">
+                <i class="fa-solid fa-building-user"></i>
+                <h3>Hostels</h3>
+                <p>Social hubs with budget-friendly vibes.</p>
+            </div>
+            <div class="cat-card">
+                <i class="fa-solid fa-door-closed"></i>
+                <h3>Single Rooms</h3>
+                <p>Privacy-focused rooms in top areas.</p>
+            </div>
+            <div class="cat-card">
+                <i class="fa-solid fa-house-chimney-window"></i>
+                <h3>Full Homes</h3>
+                <p>Spacious villas and apartments for families.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="tools-section">
+        <div style="text-align: center; margin-bottom: 60px;">
+            <h2 style="font-size: 2.5rem; margin-bottom: 10px;">Integrated Smart Tools</h2>
+            <p style="opacity: 0.6;">Everything you need to manage your lifestyle.</p>
+        </div>
+
+        <div class="grid-container">
+            <div class="tool-card">
+                <i class="fa-solid fa-wallet"></i>
+                <h4>Online Payments</h4>
+                <p>Secure one-click rent and utility payments with automated receipts.</p>
+            </div>
+            <div class="tool-card">
+                <i class="fa-solid fa-gears"></i>
+                <h4>On-Demand Services</h4>
+                <p>Book verified plumbers, cleaners, and AC technicians in minutes.</p>
+            </div>
+            <div class="tool-card">
+                <i class="fa-solid fa-wifi"></i>
+                <h4>Premium Amenities</h4>
+                <p>Filter by high-speed WiFi, Gym access, Laundry, and 24/7 Power.</p>
+            </div>
+            <div class="tool-card">
+                <i class="fa-solid fa-shield-heart"></i>
+                <h4>Security Score</h4>
+                <p>Proprietary safety ratings based on 2026 local security audits.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2026 SmartRent Technology Group | All Rights Reserved</p>
+    </footer>
+
+</body>
+</html>

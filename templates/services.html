@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Services | SmartRent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="max-w-4xl mx-auto p-6">
+        <a href="/dashboard" style="display:inline-block; margin-bottom:12px; color:#64748b; text-decoration:none;">← Back to Dashboard</a>
+        <h1 class="text-3xl font-bold mb-6">Book a Service</h1>
+        <div class="grid grid-cols-3 gap-4">
+                <div class="p-6 bg-white rounded-lg shadow cursor-pointer service-card" data-service="Plumber">
+                    <h3 class="font-bold">Plumber</h3>
+                    <p class="text-sm text-gray-500">Fix leaks, pipes, and taps</p>
+                </div>
+                <div class="p-6 bg-white rounded-lg shadow cursor-pointer service-card" data-service="Electrician">
+                    <h3 class="font-bold">Electrician</h3>
+                    <p class="text-sm text-gray-500">Wiring, switches, AC repair</p>
+                </div>
+                <div class="p-6 bg-white rounded-lg shadow cursor-pointer service-card" data-service="Cleaner">
+                    <h3 class="font-bold">Cleaner</h3>
+                    <p class="text-sm text-gray-500">Home cleaning and deep clean</p>
+                </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="svcModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+        <div style="background:white; padding:20px; border-radius:12px; width:90%; max-width:420px; margin:0 auto;">
+            <h2 id="svcTitle" class="font-bold text-lg">Book Service</h2>
+            <textarea id="svcDesc" rows="4" class="w-full mt-3 p-2 border rounded" placeholder="Describe the problem..."></textarea>
+            <div style="display:flex; gap:8px; margin-top:12px; justify-content:flex-end;">
+                <button id="svcCancel" class="px-4 py-2">Cancel</button>
+                <button id="svcBook" class="px-4 py-2 bg-indigo-600 text-white rounded">Book Now</button>
+            </div>
+        </div>
+    </div>
+
+    <section style="max-width:900px; margin:20px auto;">
+        <h2 class="text-xl font-bold mb-3">Service Providers</h2>
+        {% if providers and providers|length > 0 %}
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:12px;">
+                {% for p in providers %}
+                <div style="background:white; padding:12px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.06);">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <h3 style="margin:0; font-weight:800">{{ p.name }}</h3>
+                            <div style="font-size:0.9rem; color:#64748b">{{ p.service_type }} • {{ p.details }}</div>
+                        </div>
+                        <div style="text-align:right">
+                            <div style="font-weight:700">{{ p.phone }}</div>
+                            {% if p.upi_id %}
+                                <div style="font-size:0.85rem; color:#6b7280">UPI: {{ p.upi_id }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:8px; margin-top:10px; justify-content:flex-end;">
+                        <a href="tel:{{ p.phone }}" class="px-3 py-1 bg-green-600 text-white rounded">Call</a>
+                        <button class="px-3 py-1 bg-blue-600 text-white rounded bookProvider" data-id="{{ p.id }}" data-service="{{ p.service_type }}">Book Now</button>
+                        {% if p.upi_id %}
+                            <button class="px-3 py-1 bg-indigo-600 text-white rounded payProvider" data-upi="{{ p.upi_id }}">Pay Now</button>
+                        {% else %}
+                            <button class="px-3 py-1 bg-gray-300 text-black rounded" disabled>No Pay</button>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p style="color:#94a3b8">No providers listed yet. Owners can add providers from their dashboard.</p>
+        {% endif %}
+    </section>
+
+    <script>
+        let selectedService = null;
+        document.querySelectorAll('.service-card').forEach(c=>{
+            c.addEventListener('click', ()=>{
+                selectedService = c.getAttribute('data-service');
+                document.getElementById('svcTitle').innerText = 'Book ' + selectedService;
+                document.getElementById('svcModal').style.display = 'flex';
+            });
+        });
+        document.getElementById('svcCancel').addEventListener('click', ()=>{ document.getElementById('svcModal').style.display='none'; });
+        document.getElementById('svcBook').addEventListener('click', async ()=>{
+            const desc = document.getElementById('svcDesc').value;
+            const res = await fetch('/api/book_service', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({service_type: selectedService, description: desc})});
+            const j = await res.json(); if(j.status=='booked') { alert('Service booked'); document.getElementById('svcModal').style.display='none'; }
+            else alert('Failed');
+        });
+
+        document.querySelectorAll('.bookProvider').forEach(b=>{
+            b.addEventListener('click', (e)=>{
+                const svc = e.target.getAttribute('data-service'); selectedService = svc; document.getElementById('svcTitle').innerText = 'Book ' + svc; document.getElementById('svcModal').style.display = 'flex';
+            });
+        });
+
+        document.querySelectorAll('.payProvider').forEach(btn=>{
+            btn.addEventListener('click', async (e)=>{
+                const upi = e.target.getAttribute('data-upi');
+                const pid = e.target.closest('[data-id]')?.getAttribute('data-id') || '';
+                // prompt amount
+                const amount = prompt('Amount to pay (₹)'); if(!amount) return;
+                // show QR modal with generated UPI QR image
+                const upiLink = `upi://pay?pa=${encodeURIComponent(upi)}&pn=SmartRent+Payment&am=${encodeURIComponent(amount)}&cu=INR`;
+                const qrUrl = `https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=${encodeURIComponent(upiLink)}`;
+                const modal = document.createElement('div'); modal.style.position='fixed'; modal.style.inset=0; modal.style.display='flex'; modal.style.alignItems='center'; modal.style.justifyContent='center'; modal.style.background='rgba(0,0,0,0.6)';
+                const box = document.createElement('div'); box.style.background='white'; box.style.padding='16px'; box.style.borderRadius='12px'; box.style.textAlign='center';
+                box.innerHTML = `<h3>Pay ₹${amount}</h3><img src="${qrUrl}" style="width:240px;height:240px;margin:10px 0"><div style="margin-top:8px"><a href='${upiLink}' class='btn' style='display:inline-block;padding:8px 12px;background:#0f172a;color:white;border-radius:8px;text-decoration:none'>Open UPI App</a> <button id='closeQr' style='margin-left:8px;padding:8px 12px'>Close</button></div><p style='margin-top:8px;color:#64748b'>Phone: ${e.target.closest('div').querySelector('div')?.innerText || ''}</p>`;
+                modal.appendChild(box); document.body.appendChild(modal);
+                document.getElementById('closeQr').addEventListener('click', ()=>{ modal.remove(); });
+                // record payment attempt (best-effort)
+                await fetch('/api/record_payment', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({provider_id: pid, amount: amount, method: 'upi'})});
+            });
+        });
+    </script>
+</body>
+</html>

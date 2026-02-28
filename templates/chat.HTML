@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat | SmartRent</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="h-screen flex bg-gray-100 overflow-hidden">
+    <aside class="w-80 bg-white border-r flex flex-col shadow-lg">
+        <header class="p-4 bg-gray-50 border-b flex justify-between items-center">
+            <span class="font-bold text-xl">Chats</span>
+            <div class="flex gap-3">
+                <a href="/dashboard"><i data-lucide="home" class="w-5 text-gray-500"></i></a>
+                <a href="/logout"><i data-lucide="log-out" class="w-5 text-red-500"></i></a>
+            </div>
+        </header>
+        <div class="flex-1 overflow-y-auto">
+            {% for partner in partners %}
+            <a href="/chat?target_id={{ partner.id }}" class="p-4 flex items-center gap-3 border-b hover:bg-gray-50 transition">
+                <div class="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center text-white font-bold">{{ partner.name[0] | upper }}</div>
+                <div class="font-bold">{{ partner.name }}</div>
+            </a>
+            {% endfor %}
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col relative">
+        {% if target_user %}
+        <header class="p-4 bg-[#075e54] text-white flex items-center gap-3 shadow-md">
+            <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-bold">
+                {{ target_user['name'][0] | upper }}
+            </div>
+            <div>
+                <h2 class="font-bold text-lg">{{ target_user['name'] }}</h2>
+                <div id="typing-indicator" class="text-sm text-white/80" style="display:none">typing...</div>
+            </div>
+        </header>
+
+        <div id="msg-box" class="flex-1 overflow-y-auto p-6 flex flex-col gap-3 bg-[#e5ddd5]">
+            {% for m in messages %}
+            <div class="max-w-[70%] p-3 shadow-sm rounded-lg text-sm {% if m['sender_id'] == current_user_id %} bg-[#dcf8c6] self-end {% else %} bg-white self-start {% endif %}">
+                {% if m['msg_type'] == 'image' and m['file_path'] %}
+                    <img src="{{ m['file_path'] }}" style="max-width:300px; border-radius:8px; display:block" />
+                {% elif m['msg_type'] == 'video' and m['file_path'] %}
+                    <video controls style="max-width:300px; border-radius:8px; display:block"><source src="{{ m['file_path'] }}"></video>
+                {% elif m['msg_type'] == 'file' and m['file_path'] %}
+                    <a href="{{ m['file_path'] }}" target="_blank">Download file</a>
+                {% elif m['msg_type'] == 'request' %}
+                    {% set parts = (m['msg_text'] or '').split('|') %}
+                    {% set rrid = parts[0] if parts|length>0 else '' %}
+                    {% set prop_title = parts[1] if parts|length>1 else 'Property' %}
+                    <div style="font-weight:800">Rental Request</div>
+                    <div>Request for: <strong>{{ prop_title }}</strong></div>
+                    {% set rstatus = m.request_status if m.request_status is defined else None %}
+                    <div style="margin-top:8px;">
+                        {% if rstatus == 'requested' and current_user_id == m.rental_owner_id %}
+                            <div style="display:flex; gap:8px;">
+                                <button class="btn-accept-request" data-rrid="{{ rrid }}" style="background:#10b981;color:#fff;padding:6px 10px;border-radius:8px;border:none;">Accept</button>
+                                <button class="btn-reject-request" data-rrid="{{ rrid }}" style="background:#ef4444;color:#fff;padding:6px 10px;border-radius:8px;border:none;">Reject</button>
+                            </div>
+                        {% elif rstatus == 'accepted' %}
+                            <div style="color:#065f46; font-weight:700">Accepted</div>
+                            {% if current_user_id == m.rental_tenant_id %}
+                                <div style="margin-top:6px;"><button class="btn-pay-request-chat" data-rrid="{{ m.rental_request_id }}" data-amount="{{ m.rental_amount }}" style="background:#6366f1;color:#fff;padding:6px 10px;border-radius:8px;border:none;">Pay ₹{{ m.rental_amount }}</button></div>
+                            {% endif %}
+                        {% elif rstatus == 'paid' %}
+                            <div style="color:#065f46; font-weight:700">Paid</div>
+                        {% elif rstatus == 'rejected' %}
+                            <div style="color:#9ca3af; font-weight:700">Rejected</div>
+                        {% else %}
+                            {% if m['sender_id'] == current_user_id %}
+                                <small class="text-gray-500">Request sent</small>
+                            {% else %}
+                                <small class="text-gray-500">No action</small>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                {% elif m['msg_type'] == 'location' %}
+                    {% set parts = m['msg_text'].split('|') %}
+                    {% set lat = parts[0] %}
+                    {% set lng = parts[1] %}
+                    {% set label = parts[2] if parts|length > 2 else 'Location' %}
+                    <a href="https://www.google.com/maps?q={{ lat }},{{ lng }}" target="_blank">📍 {{ label }}</a>
+                {% else %}
+                    <p>{{ m['msg_text'] }}</p>
+                {% endif %}
+                <div class="flex items-center gap-2 justify-end">
+                    <span class="text-[10px] text-gray-400">{{ m['timestamp'][11:16] }}</span>
+                    {% if m['sender_id'] == current_user_id %}
+                        <span class="text-[10px] text-gray-500">{% if m['status'] == 'read' %}✔✔{% elif m['status'] == 'delivered' %}✔✔{% else %}✔{% endif %}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+            <div id="scroll-anchor"></div>
+        </div>
+
+        <footer class="p-4 bg-gray-100 flex items-center gap-3">
+            <input type="text" id="mIn" class="flex-1 border-none ring-1 ring-gray-300 rounded-full px-5 py-2" placeholder="Type a message...">
+            <input type="file" id="fileInput" style="display:none">
+            <button id="attachBtn" title="Attach" class="bg-white p-2 rounded-full"><i data-lucide="paperclip"></i></button>
+            <button id="locBtn" title="Send location" class="bg-white p-2 rounded-full"><i data-lucide="map-pin"></i></button>
+            <button id="sendBtn" class="bg-[#075e54] text-white p-2.5 rounded-full"><i data-lucide="send"></i></button>
+        </footer>
+        {% else %}
+        <div class="flex-1 flex flex-col items-center justify-center text-gray-400 bg-white">
+            <i data-lucide="message-square" class="w-16 h-16 mb-2"></i>
+            <p class="text-xl">Select a conversation to start chatting</p>
+        </div>
+        {% endif %}
+    </main>
+
+    <script>
+        lucide.createIcons();
+        const anchor = document.getElementById('scroll-anchor');
+        if(anchor) anchor.scrollIntoView();
+
+        const targetId = "{{ target_user.id if target_user else '' }}";
+        // simple emoji picker
+        const emojiBtn = document.createElement('button'); emojiBtn.type='button'; emojiBtn.innerText='😊'; emojiBtn.style.margin='0 6px';
+        const footer = document.querySelector('footer');
+        footer?.insertBefore(emojiBtn, document.getElementById('attachBtn'));
+        const emojiPanel = document.createElement('div'); emojiPanel.style.position='absolute'; emojiPanel.style.bottom='70px'; emojiPanel.style.right='120px'; emojiPanel.style.background='white'; emojiPanel.style.padding='8px'; emojiPanel.style.borderRadius='8px'; emojiPanel.style.boxShadow='0 6px 18px rgba(0,0,0,0.12)'; emojiPanel.style.display='none';
+        const emojis = ['😀','😂','😍','👍','🙏','🔥','🎉','📍','📷','📎']; emojis.forEach(e=>{const b=document.createElement('button'); b.type='button'; b.style.fontSize='20px'; b.style.margin='4px'; b.innerText=e; b.addEventListener('click', ()=>{ const m=document.getElementById('mIn'); m.value += e; m.focus(); }); emojiPanel.appendChild(b)});
+        document.body.appendChild(emojiPanel);
+        emojiBtn.addEventListener('click', ()=> emojiPanel.style.display = emojiPanel.style.display==='none'?'block':'none');
+
+        async function send() {
+            const input = document.getElementById('mIn');
+            const text = input.value.trim();
+            if(!text || !targetId) return;
+            await fetch('/api/send_msg', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ receiver_id: targetId, message: text, msg_type: 'text' })
+            });
+            input.value = '';
+            navigator.sendBeacon && navigator.sendBeacon('/api/typing', JSON.stringify({ partner_id: targetId, is_typing: false }));
+            location.reload();
+        }
+
+        // File upload flow
+        const fileInput = document.getElementById('fileInput');
+        document.getElementById('attachBtn')?.addEventListener('click', ()=>fileInput.click());
+        fileInput?.addEventListener('change', async (e)=>{
+            const f = e.target.files[0];
+            if(!f) return;
+            const fd = new FormData();
+            fd.append('file', f);
+            fd.append('receiver_id', targetId);
+            // basic mime check for image
+            const isImage = f.type.startsWith('image/');
+            fd.append('msg_type', isImage ? 'image' : 'file');
+            await fetch('/api/upload_chat_file', { method: 'POST', body: fd });
+            location.reload();
+        });
+
+        // Send location
+        document.getElementById('locBtn')?.addEventListener('click', ()=>{
+            if(!navigator.geolocation) return alert('Geolocation not supported');
+            navigator.geolocation.getCurrentPosition(async (pos)=>{
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                await fetch('/api/send_msg', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ receiver_id: targetId, message: {lat, lng, label: ''}, msg_type: 'location' })
+                });
+                location.reload();
+            }, (err)=>{ alert('Unable to get location'); });
+        });
+
+        document.getElementById('sendBtn')?.addEventListener('click', send);
+        document.getElementById('mIn')?.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); send(); } });
+
+        // Typing indicator: POST when typing, poll when partner typing
+        let typingTimer = null;
+        const mIn = document.getElementById('mIn');
+        if(mIn){
+            mIn.addEventListener('input', ()=>{
+                fetch('/api/typing', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({partner_id: targetId, is_typing: true})});
+                clearTimeout(typingTimer);
+                typingTimer = setTimeout(()=>{
+                    fetch('/api/typing', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({partner_id: targetId, is_typing: false})});
+                }, 1200);
+            });
+        }
+
+        // Poll partner typing
+        async function pollTyping(){
+            if(!targetId) return;
+            const res = await fetch('/api/get_typing?partner_id=' + targetId);
+            const data = await res.json();
+            const el = document.getElementById('typing-indicator');
+            if(el) el.style.display = data.is_typing ? 'block' : 'none';
+        }
+        setInterval(pollTyping, 900);
+
+        // Handle accept/reject for rental requests inline in chat
+        document.addEventListener('click', async (e)=>{
+            if(e.target.classList.contains('btn-accept-request') || e.target.classList.contains('btn-reject-request')){
+                const rrid = e.target.getAttribute('data-rrid');
+                const action = e.target.classList.contains('btn-accept-request') ? 'accept' : 'reject';
+                const res = await fetch('/api/respond_request', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({rental_request_id: rrid, action})});
+                const j = await res.json();
+                if(j.status==='ok'){
+                    // update UI inline without full reload
+                    const card = e.target.closest('div');
+                    if(card){
+                        // disable both buttons and show status
+                        const acceptBtn = card.querySelector('.btn-accept-request');
+                        const rejectBtn = card.querySelector('.btn-reject-request');
+                        if(acceptBtn) { acceptBtn.disabled = true; acceptBtn.innerText = j.new === 'accepted' ? 'Accepted' : 'Accept'; acceptBtn.style.opacity = '0.7'; }
+                        if(rejectBtn) { rejectBtn.disabled = true; rejectBtn.innerText = j.new === 'rejected' ? 'Rejected' : 'Reject'; rejectBtn.style.opacity = '0.7'; }
+                        // append small system note
+                        const note = document.createElement('div'); note.style.fontSize='12px'; note.style.color='#065f46'; note.style.marginTop='6px'; note.innerText = 'Request ' + j.new;
+                        card.appendChild(note);
+                    }
+                    // refresh payments/requests widgets if present
+                    if(typeof loadMyRequests === 'function') loadMyRequests();
+                    if(typeof loadRentalRequests === 'function') loadRentalRequests();
+                } else alert('Error');
+            }
+                if(e.target.classList.contains('btn-pay-request-chat')){
+                    const rrid = e.target.getAttribute('data-rrid');
+                    const amount = e.target.getAttribute('data-amount');
+                    // open inline chat payment modal
+                    openChatPaymentModal(rrid, amount);
+                }
+        });
+
+            // Chat inline payment modal
+            const chatPayHtml = `
+            <div id="chatPayModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,0.6);z-index:4000;">
+              <div style="background:white;padding:16px;border-radius:10px;max-width:420px;width:90%;">
+                <h3 style="margin-top:0">Pay Rent</h3>
+                <div id="chatPayDetails" style="margin-bottom:10px"></div>
+                <div style="display:flex;gap:8px;margin-bottom:8px">
+                    <input id="chatUpiInput" placeholder="UPI ID (optional)" style="flex:1;padding:8px;border:1px solid #e6e6e6;border-radius:8px" />
+                    <button id="chatOpenUpiBtn" style="background:#0ea5a4;color:white;padding:8px 12px;border-radius:8px;border:none">Open</button>
+                </div>
+                <div id="chatQrArea" style="margin-bottom:12px"></div>
+                <div style="display:flex;gap:8px;justify-content:flex-end">
+                  <button id="chatConfirmPaidBtn" style="background:#6366f1;color:white;padding:8px 12px;border-radius:8px;border:none">I've Paid</button>
+                  <button id="chatCancelPay" style="background:#ef4444;color:white;padding:8px 12px;border-radius:8px;border:none">Cancel</button>
+                </div>
+              </div>
+            </div>`;
+            document.body.insertAdjacentHTML('beforeend', chatPayHtml);
+
+            function openChatPaymentModal(rrid, amount){
+                const modal = document.getElementById('chatPayModal');
+                const details = document.getElementById('chatPayDetails');
+                const upiInput = document.getElementById('chatUpiInput');
+                const qrArea = document.getElementById('chatQrArea');
+                modal.style.display = 'flex';
+                details.innerHTML = `<div><strong>Amount:</strong> ₹${amount}</div><div style="color:#64748b;margin-top:6px">Request ID: ${rrid}</div>`;
+                upiInput.value = '';
+                qrArea.innerHTML = '';
+                document.getElementById('chatCancelPay').onclick = ()=>{ modal.style.display='none'; };
+                document.getElementById('chatOpenUpiBtn').onclick = ()=>{
+                    const u = upiInput.value.trim(); if(!u) return alert('Enter UPI ID');
+                    const link = `upi://pay?pa=${encodeURIComponent(u)}&pn=SmartRent&am=${encodeURIComponent(amount)}&cu=INR`;
+                    window.location.href = link;
+                    const qr = `https://chart.googleapis.com/chart?cht=qr&chs=200x200&chl=${encodeURIComponent(link)}`;
+                    qrArea.innerHTML = `<img src="${qr}" style="max-width:160px;border-radius:8px"/>`;
+                };
+                document.getElementById('chatConfirmPaidBtn').onclick = async ()=>{
+                    const u = document.getElementById('chatUpiInput').value.trim();
+                    const res = await fetch('/api/record_payment', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({rental_request_id: rrid, amount: amount, method:'upi', note: u?('Paid via UPI:'+u):'Paid'})});
+                    const j = await res.json();
+                    if(j.status === 'ok'){
+                        alert('Payment recorded'); modal.style.display='none'; if(typeof loadTx === 'function') loadTx(); if(typeof loadMyRequests === 'function') loadMyRequests();
+                        // reflect in chat UI: find pay button and mark paid
+                        const btn = document.querySelector(`button.btn-pay-request-chat[data-rrid="${rrid}"]`);
+                        if(btn){ btn.disabled = true; btn.innerText = 'Paid'; btn.style.opacity='0.7'; }
+                    } else alert('Failed to record payment');
+                };
+            }
+    </script>
+</body>
+</html>

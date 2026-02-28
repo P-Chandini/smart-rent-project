@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Payment Dashboard | SmartRent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="max-w-4xl mx-auto p-6">
+        <h1 class="text-3xl font-bold mb-4">Payment Dashboard</h1>
+
+        <div style="margin-bottom:12px">
+            <a href="/dashboard" class="bg-gray-100 text-gray-800 px-4 py-2 rounded-lg">← Back to Dashboard</a>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow mb-6">
+            <h2 class="font-bold text-lg">Active Payments</h2>
+            <div id="activePaymentsArea"><p class="text-gray-500">Loading active payments...</p></div>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow mb-6">
+            <h2 class="font-bold text-lg">Your Requests</h2>
+            <div id="myRequestsArea"><p class="text-gray-500">Loading your rental requests...</p></div>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h2 class="font-bold text-lg mb-4">Transaction History</h2>
+            <table class="w-full text-left">
+                <thead class="text-sm text-gray-500 border-b">
+                    <tr>
+                        <th class="pb-2">Date</th>
+                        <th class="pb-2">Amount</th>
+                        <th class="pb-2">Status</th>
+                        <th class="pb-2">To</th>
+                        <th class="pb-2">Details</th>
+                    </tr>
+                </thead>
+                <tbody id="txBody">
+                    <!-- populated by JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const payNowBtn = document.getElementById('payNow');
+        if(payNowBtn){
+            payNowBtn.addEventListener('click', async ()=>{
+                const amt = 8000;
+                // simple pay flow: record a rent payment (no payee specified here)
+                const res = await fetch('/api/record_payment', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({amount: amt, method:'card', note:'Monthly rent'})});
+                if(res.ok) { alert('Payment recorded'); loadTx(); }
+                else alert('Payment failed');
+            });
+        }
+
+        async function loadTx(){
+            const res = await fetch('/api/tx_history');
+            const data = await res.json();
+            const body = document.getElementById('txBody'); body.innerHTML='';
+            data.forEach(t=>{
+                const r = document.createElement('tr');
+                let toText = '';
+                if(t.to){
+                    if(t.to.type === 'provider') toText = `${t.to.name} (Provider)`;
+                    else if(t.to.type === 'rental') toText = `${t.to.owner_name || ''} - ${t.to.property_title || 'Property'}`;
+                    else if(t.to.type === 'user') toText = `${t.to.name}`;
+                }
+                const details = [];
+                if(t.to && t.to.phone) details.push(`Phone: ${t.to.phone}`);
+                if(t.method) details.push(`Method: ${t.method}`);
+                if(t.note) details.push(t.note);
+                r.innerHTML = `
+                    <td class="py-2">${t.timestamp}</td>
+                    <td class="py-2">₹${t.amount}</td>
+                    <td class="py-2">${t.status}</td>
+                    <td class="py-2">${toText}</td>
+                    <td class="py-2 text-sm text-gray-600">${details.join(' | ')}</td>
+                `;
+                body.appendChild(r);
+            });
+        }
+        loadTx();
+
+        // populate active payments (pending transactions) from tx_history
+        async function loadActivePayments(){
+            const area = document.getElementById('activePaymentsArea');
+            const res = await fetch('/api/tx_history');
+            if(!res.ok){ area.innerHTML = '<p class="text-red-500">Unable to fetch payments</p>'; return; }
+            const data = await res.json();
+            const pending = (data || []).filter(t => t.status === 'pending');
+            if(!pending.length){ area.innerHTML = '<p class="text-gray-500">No active payments.</p>'; return; }
+            const frag = document.createElement('div'); frag.style.display='grid'; frag.style.gap='8px';
+            pending.forEach(p=>{
+                const card = document.createElement('div'); card.style.padding='10px'; card.style.border='1px solid #f1f5f9'; card.style.borderRadius='8px';
+                const toText = p.to ? (p.to.type === 'rental' ? (p.to.owner_name + ' • ' + (p.to.property_title||'Property')) : (p.to.name || 'Provider')) : '—';
+                card.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div><strong>₹${p.amount}</strong><div style="color:#64748b; font-size:0.9rem">To: ${toText} • ${p.timestamp}</div></div><div><button class="btn-pay-active" data-amount="${p.amount}" data-rrid="${p.to && p.to.type==='rental' ? (p.to.rental_request_id||'') : ''}" style="background:#6366f1;color:#fff;padding:8px 10px;border-radius:8px;border:none;">Pay</button></div></div>`;
+                frag.appendChild(card);
+            });
+            area.innerHTML = ''; area.appendChild(frag);
+        }
+
+        // open payment modal for active payments
+        document.addEventListener('click', async (e)=>{
+            if(e.target.classList.contains('btn-pay-active')){
+                const amount = e.target.getAttribute('data-amount');
+                const rrid = e.target.getAttribute('data-rrid');
+                const to = e.target.closest('div').querySelector('div > div > div')?.innerText || '';
+                openPaymentModal(rrid || null, amount, to, null);
+            }
+            if(e.target.classList.contains('btn-pay-request')){
+                const rrid = e.target.getAttribute('data-rrid');
+                const amount = e.target.getAttribute('data-amount');
+                openPaymentModal(rrid, amount, 'Rent', null);
+            }
+            if(e.target.classList.contains('btn-pay-request') || e.target.classList.contains('btn-pay-active')){
+                // handled by openPaymentModal
+            }
+        });
+
+        loadActivePayments();
+
+        // load tenant's rental requests (if any)
+        async function loadMyRequests(){
+            const area = document.getElementById('myRequestsArea');
+            const res = await fetch('/api/get_rental_requests');
+            if(!res.ok){ area.innerHTML = '<p class="text-red-500">Unable to fetch requests</p>'; return; }
+            const data = await res.json();
+            if(!data || data.length===0){ area.innerHTML = '<p class="text-gray-500">No requests found.</p>'; return; }
+            const frag = document.createElement('div'); frag.style.display='grid'; frag.style.gap='8px';
+            data.forEach(r=>{
+                const card = document.createElement('div'); card.style.padding='10px'; card.style.border='1px solid #f1f5f9'; card.style.borderRadius='8px';
+                const status = r.status || '';
+                let actions = '';
+                if(status === 'accepted'){
+                    actions = `<button class="btn-pay-request" data-rrid="${r.id}" data-amount="${r.amount}" style="background:#6366f1;color:#fff;padding:8px 10px;border-radius:8px;border:none;">Pay ₹${r.amount}</button>`;
+                } else {
+                    actions = `<small class="text-gray-500">${status}</small>`;
+                }
+                card.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><div><strong>${r.property_title || ('Property '+r.property_id)}</strong><div style="color:#64748b; font-size:0.9rem">Requested: ₹${r.amount} • ${r.timestamp}</div></div><div>${actions}</div></div>`;
+                frag.appendChild(card);
+            });
+            area.innerHTML = ''; area.appendChild(frag);
+        }
+
+        document.addEventListener('click', async (e)=>{
+            if(e.target.classList.contains('btn-pay-request')){
+                const rrid = e.target.getAttribute('data-rrid');
+                const amount = e.target.getAttribute('data-amount');
+                if(!confirm('Pay ₹'+amount+' for this request?')) return;
+                const res = await fetch('/api/record_payment', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({rental_request_id: rrid, amount: amount, method:'upi', note:'Rent payment via Requests'})});
+                const j = await res.json(); if(j.status==='ok'){ alert('Payment successful'); loadTx(); loadMyRequests(); } else alert('Payment failed');
+            }
+        });
+
+        loadMyRequests();
+
+                // --- Payment modal & helpers ---
+                const paymentModalHtml = `
+                <div id="payModal" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,0.6);z-index:4000;">
+                    <div style="background:white;padding:18px;border-radius:12px;max-width:420px;width:90%;">
+                        <h3 style="margin-top:0">Pay Now</h3>
+                        <div id="payDetails" style="margin-bottom:12px"></div>
+                        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+                                <input id="upiInput" placeholder="UPI ID (e.g. mike@upi)" style="flex:1;padding:8px;border:1px solid #e6e6e6;border-radius:8px" />
+                                <button id="openUpiBtn" style="background:#0ea5a4;color:white;padding:8px 12px;border-radius:8px;border:none">Open</button>
+                        </div>
+                        <div id="qrArea" style="margin-bottom:12px"></div>
+                        <div style="display:flex;gap:8px;justify-content:flex-end">
+                            <button id="confirmPaidBtn" style="background:#10b981;color:white;padding:8px 12px;border-radius:8px;border:none">I've Paid</button>
+                            <button id="cancelPay" style="background:#ef4444;color:white;padding:8px 12px;border-radius:8px;border:none">Cancel</button>
+                        </div>
+                    </div>
+                </div>`;
+                document.body.insertAdjacentHTML('beforeend', paymentModalHtml);
+
+                function openPaymentModal(rrid, amount, toText, upi){
+                        const modal = document.getElementById('payModal');
+                        const details = document.getElementById('payDetails');
+                        const upiInput = document.getElementById('upiInput');
+                        const qrArea = document.getElementById('qrArea');
+                        modal.style.display = 'flex';
+                        details.innerHTML = `<div><strong>Amount:</strong> ₹${amount}</div><div style="color:#64748b;margin-top:6px">To: ${toText}</div>`;
+                        upiInput.value = upi || '';
+                        qrArea.innerHTML = '';
+                        // wire buttons
+                        document.getElementById('cancelPay').onclick = ()=>{ modal.style.display='none'; };
+                        document.getElementById('openUpiBtn').onclick = ()=>{
+                                const u = upiInput.value.trim(); if(!u) return alert('Enter UPI ID');
+                                const link = `upi://pay?pa=${encodeURIComponent(u)}&pn=SmartRent&am=${encodeURIComponent(amount)}&cu=INR`;
+                                // open UPI app (mobile)
+                                window.location.href = link;
+                                // show QR as fallback
+                                const qr = `https://chart.googleapis.com/chart?cht=qr&chs=200x200&chl=${encodeURIComponent(link)}`;
+                                qrArea.innerHTML = `<img src="${qr}" style="max-width:160px;border-radius:8px"/>`;
+                        };
+                        document.getElementById('confirmPaidBtn').onclick = async ()=>{
+                                // record payment on server
+                                const u = document.getElementById('upiInput').value.trim();
+                                const res = await fetch('/api/record_payment', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({rental_request_id: rrid, amount: amount, method:'upi', note: u?('Paid via UPI:'+u):'Paid'})});
+                                const j = await res.json();
+                                if(j.status === 'ok'){
+                                        alert('Payment recorded'); modal.style.display='none'; loadTx(); loadActivePayments(); loadMyRequests();
+                                } else alert('Failed to record payment');
+                        };
+                }
+    </script>
+</body>
+</html>

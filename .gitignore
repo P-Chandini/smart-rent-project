@@ -1,0 +1,15 @@
+# Database
+smartrent.db
+
+# Python Cache
+__pycache__/
+*.pyc
+
+# User Uploads
+static/uploads/*
+
+# Environment & Settings
+venv/
+env/
+.vscode/
+settings.json
